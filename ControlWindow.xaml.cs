@@ -335,7 +335,7 @@ namespace MathingBee.Presentation
         void Correct()
         {
             QuestionTimer.Stop();
-            bool NewRound = Bee.Correct();
+            bool NewRound = Bee.QuestionAnswered(true);
             DisplayUpdate();
             Dispatcher.Invoke(WaitForRender, DispatcherPriority.Render);
             Display.UpdateLayout();
@@ -346,7 +346,7 @@ namespace MathingBee.Presentation
         void Incorrect(bool TimeUp = false)
         {
             QuestionTimer.Stop();
-            bool NewRound = Bee.Incorrect();
+            bool NewRound = Bee.QuestionAnswered(false);
             DisplayUpdate();
             Dispatcher.Invoke(WaitForRender, DispatcherPriority.Render);
             ContestantsDisp.Content = String.Format("{0}", Bee.RemainingCount);
@@ -356,17 +356,21 @@ namespace MathingBee.Presentation
         }
         void Judge()
         {
-            JudgeWindow jw = new JudgeWindow();
-            jw.Bee = Bee;
+            string name = Bee.CurrentContestant == null ? "" : Bee.CurrentContestant.Name;
+            JudgeWindow jw = new JudgeWindow() { Owner = this, Bee = Bee, Contestant = name };
             jw.ShowDialog();
-            DisplayUpdate();
+            if (jw.Dirty)
+                if ((Bee.State == BeeState.Ended) || (Bee.SubState == BeeSubState.RoundEnding))
+                    ReadyButtonsForNextRound();
+                else
+                    DisplayUpdate();
         }
         #endregion
 
         #region event handlers
         private void CreateMathButton_Click(object sender, RoutedEventArgs e)
         {
-            CreateMathWindow w = new CreateMathWindow() { Bee = Bee };
+            CreateMathWindow w = new CreateMathWindow() { Owner = this, Bee = Bee };
             w.ShowDialog();
             SetStatus();
         }
@@ -386,7 +390,7 @@ namespace MathingBee.Presentation
 
         private void ChooseContestantsButton_Click(object sender, RoutedEventArgs e)
         {
-            ChooseContestantsWindow w = new ChooseContestantsWindow();
+            ChooseContestantsWindow w = new ChooseContestantsWindow() { Owner = this };
             w.SetBee(Bee);
             w.ShowDialog();
             SetStatus();
