@@ -1,14 +1,5 @@
 unit Main;
 
-{
-  This file copyright (C) 1999, 2000 by Joseph Alan Taylor.
-
-  This source code is original work and the intelectual
-  property of Joseph Alan Taylor.  This source code is
-  not to be distributed by any means without express
-  written permission of Joseph Alan Taylor.
-}
-
 interface
 
 uses
