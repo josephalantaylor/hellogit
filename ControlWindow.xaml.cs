@@ -71,7 +71,7 @@ namespace MathingBee.Presentation
         }
         public void ShowContestants()
         {
-            ContestantList.ItemsSource = Bee.RoundContestants;
+            ContestantList.ItemsSource = Bee.Contestants.RoundContestants;
         }
         #endregion
 
@@ -83,8 +83,8 @@ namespace MathingBee.Presentation
         }
         void AnimateNewRound()
         {
-            Sound.Play(SoundType.NewRound, Bee.RoundNumber);
-            Display.AnimateNewRound(Bee.RoundNumber);
+            Sound.Play(SoundType.NewRound, Bee.Rounds.RoundNumber);
+            Display.AnimateNewRound(Bee.Rounds.RoundNumber);
         }
         void AnimateEndOfRound()
         {
@@ -171,14 +171,27 @@ namespace MathingBee.Presentation
                     break;
             }
 
+            // state
+            bool QuestionShow = (Bee.State == BeeState.Running) && (Bee.SubState != BeeSubState.RoundBeginning);
+            bool AnswerShow = (Bee.SubState == BeeSubState.Waiting) || (Bee.SubState == BeeSubState.RoundEnding);
+            int RoundNumber = Bee.Rounds.RoundNumber;
+            BeeRound CurrentRound = Bee.Rounds.CurrentRound;
+
             // contestants
             string Contestants = String.Format(
                 "{0}\n{1}\n{2}",
-                Bee.CurrentContestant == null ? "" : Bee.CurrentContestant.ToString(),
-                Bee.NextContestant == null ? "" : Bee.NextContestant.ToString(),
-                Bee.FollowingContestant == null ? "" : Bee.FollowingContestant.ToString()
+                Bee.Contestants.CurrentContestant == null ? "" : Bee.Contestants.CurrentContestant.ToString(),
+                Bee.Contestants.NextContestant == null ? "" : Bee.Contestants.NextContestant.ToString(),
+                AnswerShow ? "" : Bee.Contestants.FollowingContestant == null ? "" : Bee.Contestants.FollowingContestant.ToString()
                 ).Trim();
-            string Contestant = String.Format("{0}", Bee.CurrentContestant == null ? "" : Bee.CurrentContestant.ToString());
+            BeeContestant c;
+            if (QuestionShow && AnswerShow)
+                c = Bee.Contestants.LastContestant;
+            else if (QuestionShow && !AnswerShow)
+                c = Bee.Contestants.CurrentContestant;
+            else
+                c = null;
+            string Contestant = String.Format("{0}", c == null ? "" : c.ToString());
             if ((Contestant != "") && (Contestants.IndexOf(Contestant) == 0))
                 if (Contestant == Contestants)
                     Contestants = "";
@@ -186,36 +199,35 @@ namespace MathingBee.Presentation
                     Contestants = Contestants.Substring(Contestant.Length + 1);
 
             // show questions and answers
-            bool QuestionShow = (Bee.State == BeeState.Running) && (Bee.SubState != BeeSubState.RoundBeginning);
-            bool AnswerShow = (Bee.SubState == BeeSubState.Waiting) || (Bee.SubState == BeeSubState.RoundEnding);
+            BeeQuestion q = RoundNumber == 0 ? null : AnswerShow ? CurrentRound.LastQuestion : CurrentRound.CurrentQuestion;
 
             // control window
             NextContestant.Content = Contestants;
-            RoundDisp.Content = String.Format("{0}", Bee.RoundNumber);
-            QuestionsDisp.Content = Bee.RoundNumber > 0 ? Bee.CurrentRound.UnusedCount.ToString() : "0";
+            RoundDisp.Content = String.Format("{0}", RoundNumber);
+            QuestionsDisp.Content = RoundNumber > 0 ? CurrentRound.UnusedCount.ToString() : "0";
             ContestantsDisp.Content = String.Format("{0}", Bee.RemainingCount);
-            RoundContestantsDisp.Content = Bee.ContestainsRemainingInRound;
+            RoundContestantsDisp.Content = Bee.Contestants.ContestainsWaitingInRound;
             ContestantDisp.Content = Contestant;
 
             // display window
-            Display.RoundDisplay.Content = String.Format("Round {0}", Bee.RoundNumber);
-            Display.RoundConcept.Text = Bee.RoundNumber > 0 ? String.Format("{0}\n{1} seconds", Bee.CurrentRound.Concept, Bee.CurrentRound.Seconds.Seconds) : "";
-            Display.QuestionConceptDisplay.Content = QuestionShow ? Bee.CurrentQuestion.Concept : "";
-            Display.ContestantDisplay.Content = Contestant;
+            Display.RoundDisplay.Content = String.Format("Round {0}", RoundNumber);
+            Display.RoundConcept.Text = RoundNumber > 0 ? String.Format("{0}\n{1} seconds", CurrentRound.Concept, CurrentRound.Seconds) : "";
+            Display.QuestionConceptDisplay.Content = QuestionShow ? q.Concept : "";
+            Display.ContestantDisplay.Content = Contestant.Replace(" (", "\n(");
             Display.ContestantList.Text = Contestants;
 
             // question and answer
             if (QuestionShow)
             {
-                Brush c = (Bee.SubState == BeeSubState.Waiting || Bee.SubState == BeeSubState.RoundEnding) ? Bee.LastCorrect ? Brushes.Lime : Brushes.Red : Brushes.White;
-                ContestantDisp.Foreground = c;
-                MathRender.Render(Bee.CurrentQuestion.Question, QuestionPreview, 16, c);
-                MathRender.Render(Bee.CurrentQuestion.Question, Display.QuestionDisplay, AnswerShow ? 10 : 18, c);
-                MathRender.Render(Bee.CurrentQuestion.Answer, AnswerPreview, 16, c);
+                Brush color = (Bee.SubState == BeeSubState.Waiting || Bee.SubState == BeeSubState.RoundEnding) ? Bee.LastCorrect ? Brushes.Lime : Brushes.Red : Brushes.White;
+                ContestantDisp.Foreground = color;
+                MathRender.Render(q.Question, QuestionPreview, 16, color);
+                MathRender.Render(q.Question, Display.QuestionDisplay, AnswerShow ? 10 : 18, color);
+                MathRender.Render(q.Answer, AnswerPreview, 16, color);
                 if (AnswerShow)
-                    MathRender.Render(Bee.CurrentQuestion.Answer, Display.AnswerDisplay, 36, c);
+                    MathRender.Render(q.Answer, Display.AnswerDisplay, 36, color);
                 else
-                    MathRender.Render("", Display.AnswerDisplay, 18, c);
+                    MathRender.Render("", Display.AnswerDisplay, 18, color);
             }
             else
             {
@@ -356,7 +368,7 @@ namespace MathingBee.Presentation
         }
         void Judge()
         {
-            string name = Bee.CurrentContestant == null ? "" : Bee.CurrentContestant.Name;
+            string name = Bee.Contestants.LastContestant == null ? "" : Bee.Contestants.LastContestant.Name;
             JudgeWindow jw = new JudgeWindow() { Owner = this, Bee = Bee, Contestant = name };
             jw.ShowDialog();
             if (jw.Dirty)
@@ -408,7 +420,7 @@ namespace MathingBee.Presentation
         {
             QuestionList.Items.Clear();
             QuestionDisplay l;
-            foreach(BeeQuestion question in Bee.Rounds[RoundList.SelectedIndex].Questions)
+            foreach(BeeQuestion question in Bee.Rounds.RoundByIndex(RoundList.SelectedIndex).Questions)
             {
                 l = new QuestionDisplay() { DataContext = question };
                 QuestionList.Items.Add(l);
